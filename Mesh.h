@@ -22,19 +22,13 @@
 #include "Vec3.h"
 #include <time.h>       /* time */
 
+/// proxy numbers
 #define num 6
+/// open debug cout
+#define debug 0
 
 
-///
-class Neighbours {
- public:
-  inline Neighbours () { t[0] = 0; t[1] = 0; t[2] =  0; }
-  inline Neighbours (const int & t0, const int & t1, const int & t2) {
-    t[0] = t0; t[1] = t1; t[2] =  t2;
-  }
-  inline virtual ~Neighbours () {}
-  int t[3];
-};
+
 
 /// A simple vertex class storing position and normal
 class Vertex {
@@ -53,13 +47,19 @@ class Triangle {
     v[0] = v[1] = v[2] = 0;
     lable = -1;
     tag = -1;
+    err = -1.0;
+    index = -1;
   }
   inline Triangle (const Triangle & t) {
     v[0] = t.v[0];
     v[1] = t.v[1];
     v[2] = t.v[2];
+    neighbours = t.neighbours;
     lable = t.lable;
     tag = t.tag;
+    err = t.err;
+    n = t.n;
+    index = t.index;
   }
   inline Triangle (unsigned int v0, unsigned int v1, unsigned int v2) {
     v[0] = v0;
@@ -67,21 +67,33 @@ class Triangle {
     v[2] = v2;
     lable = -1;
     tag = -1;
+    err = -1.0;
+    index = -1;
   }
   inline virtual ~Triangle () {}
   inline Triangle & operator= (const Triangle & t) {
     v[0] = t.v[0];
     v[1] = t.v[1];
     v[2] = t.v[2];
+    neighbours = t.neighbours;
     lable = t.lable;
     tag = t.tag;
+    err = t.err;
+    n = t.n;
+    index = t.index;
     return (*this);
   }
   unsigned int v[3];
-  Neighbours neighbour;
+  std::vector<int > neighbours;
   int lable;
   int tag;
+  float err;
+  Vec3f n;
+  int index;
+
 };
+
+
 
 class Proxy {
  public:
@@ -97,6 +109,7 @@ class Proxy {
 /// A Mesh class, storing a list of vertices and a list of triangles indexed over it.
 class Mesh {
  public:
+  Proxy p[num];
   std::vector<Vertex> V;
   std::vector<Triangle> T;
 
@@ -110,14 +123,19 @@ class Mesh {
   void centerAndScaleToUnit ();
 
   /// distortion error
-  float distortionError(Proxy p, Vec3f t0, Vec3f t1, Vec3f t2);
+  float distortionError(Proxy &p, Triangle &T);
     
   /// shape approximation
   void shapeApproximation() ;
 
+  void calculateNormal(Triangle &T) ;
+  
   /// shape approximation
   bool isNeighbour(Triangle &T0, Triangle &T1);
 
   void findNeighbours();
+
+  Triangle popLeastErrTriangle(std::vector<Triangle > &errQue);
+
 
 };
