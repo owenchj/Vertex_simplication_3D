@@ -20,55 +20,122 @@
 #include <cmath>
 #include <vector>
 #include "Vec3.h"
+#include <time.h>       /* time */
+
+/// proxy numbers
+#define num 6
+/// open debug cout
+#define debug 0
+
+
+
 
 /// A simple vertex class storing position and normal
 class Vertex {
-public:
-    inline Vertex () {}
-    inline Vertex (const Vec3f & p, const Vec3f & n) : p (p), n (n) {}
-    inline virtual ~Vertex () {}
-    Vec3f p;
-    Vec3f n;
+ public:
+  inline Vertex () {}
+  inline Vertex (const Vec3f & p, const Vec3f & n) : p (p), n (n) {}
+  inline virtual ~Vertex () {}
+  Vec3f p;
+  Vec3f n;
 };
 
 /// A Triangle class expressed as a triplet of indices (over an external vertex list)
 class Triangle {
-public:
-    inline Triangle () {
-        v[0] = v[1] = v[2] = 0;
-    }
-    inline Triangle (const Triangle & t) {
-        v[0] = t.v[0];
-        v[1] = t.v[1];
-        v[2] = t.v[2];
-    }
-    inline Triangle (unsigned int v0, unsigned int v1, unsigned int v2) {
-        v[0] = v0;
-        v[1] = v1;
-        v[2] = v2;
-    }
-    inline virtual ~Triangle () {}
-    inline Triangle & operator= (const Triangle & t) {
-        v[0] = t.v[0];
-        v[1] = t.v[1];
-        v[2] = t.v[2];
-        return (*this);
-    }
-    unsigned int v[3];
+ public:
+  inline Triangle () {
+    v[0] = v[1] = v[2] = 0;
+    lable = -1;
+    tag = -1;
+    err = -1.0;
+    index = -1;
+  }
+  inline Triangle (const Triangle & t) {
+    v[0] = t.v[0];
+    v[1] = t.v[1];
+    v[2] = t.v[2];
+    neighbours = t.neighbours;
+    lable = t.lable;
+    tag = t.tag;
+    err = t.err;
+    n = t.n;
+    index = t.index;
+  }
+  inline Triangle (unsigned int v0, unsigned int v1, unsigned int v2) {
+    v[0] = v0;
+    v[1] = v1;
+    v[2] = v2;
+    lable = -1;
+    tag = -1;
+    err = -1.0;
+    index = -1;
+  }
+  inline virtual ~Triangle () {}
+  inline Triangle & operator= (const Triangle & t) {
+    v[0] = t.v[0];
+    v[1] = t.v[1];
+    v[2] = t.v[2];
+    neighbours = t.neighbours;
+    lable = t.lable;
+    tag = t.tag;
+    err = t.err;
+    n = t.n;
+    index = t.index;
+    return (*this);
+  }
+  unsigned int v[3];
+  std::vector<int > neighbours;
+  int lable;
+  int tag;
+  float err;
+  Vec3f n;
+  int index;
+
+};
+
+
+
+class Proxy {
+ public:
+  inline Proxy () {}
+  inline Proxy (const Vec3f & x, const Vec3f & n) : x (x), n (n) {}
+  inline virtual ~Proxy () {}
+  Vec3f x;
+  Vec3f n;
+  // TODO
+  std::vector<Triangle> T;
 };
 
 /// A Mesh class, storing a list of vertices and a list of triangles indexed over it.
 class Mesh {
-public:
-	std::vector<Vertex> V;
-	std::vector<Triangle> T;
+ public:
+  Proxy p[num];
+  std::vector<Vertex> V;
+  std::vector<Triangle> T;
 
-    /// Loads the mesh from a <file>.off
-	void loadOFF (const std::string & filename);
+  /// Loads the mesh from a <file>.off
+  void loadOFF (const std::string & filename);
     
-    /// Compute smooth per-vertex normals
-    void recomputeNormals ();
+  /// Compute smooth per-vertex normals
+  void recomputeNormals ();
 
-    /// scale to the unit cube and center at original
-    void centerAndScaleToUnit ();
+  /// scale to the unit cube and center at original
+  void centerAndScaleToUnit ();
+
+  /// distortion error
+  float distortionError(Proxy &p, Triangle &T);
+    
+  /// shape approximation
+  void shapeApproximation() ;
+
+  void calculateNormal(Triangle &T) ;
+  
+  /// shape approximation
+  bool isNeighbour(Triangle &T0, Triangle &T1);
+
+  void findNeighbours();
+
+  Triangle popLeastErrTriangle(std::vector<Triangle > &errQue);
+
+
 };
