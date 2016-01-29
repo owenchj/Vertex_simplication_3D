@@ -5,7 +5,6 @@
 // Copyright (C) 2015 Tamy Boubekeur
 // All rights reserved.
 // ----------------------------------------------
-
 #include <iostream>
 #include <vector>
 #include <string>
