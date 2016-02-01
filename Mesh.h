@@ -24,6 +24,8 @@
 
 /// proxy numbers
 #define num 6
+/// iteration num 
+#define iteNum 5
 /// open debug cout
 #define debug 0
 
@@ -109,10 +111,19 @@ class Proxy {
 /// A Mesh class, storing a list of vertices and a list of triangles indexed over it.
 class Mesh {
  public:
+
   Proxy p[num];
+  int seed[num];  
+  bool flagFirst;
   std::vector<Vertex> V;
   std::vector<Triangle> T;
+  std::vector<Triangle > errQue;
 
+  inline Mesh () {
+    flagFirst = true; 
+    for (unsigned int i = 0; i < num; i++)  seed[i] = i;
+  }
+    
   /// Loads the mesh from a <file>.off
   void loadOFF (const std::string & filename);
     
@@ -125,17 +136,21 @@ class Mesh {
   /// distortion error
   float distortionError(Proxy &p, Triangle &T);
     
-  /// shape approximation
-  void shapeApproximation() ;
+  /// shape approximation =>  partitioning
+  void partitioning() ;
 
+  void proxyFitting() ;
+  
+  
   void calculateNormal(Triangle &T) ;
   
   /// shape approximation
   bool isNeighbour(Triangle &T0, Triangle &T1);
-
+  
   void findNeighbours();
 
-  Triangle popLeastErrTriangle(std::vector<Triangle > &errQue);
+  //  Triangle popLeastErrTriangle(std::vector<Triangle > &errQue);
+  Triangle popLeastErrTriangle();
 
 
 };
