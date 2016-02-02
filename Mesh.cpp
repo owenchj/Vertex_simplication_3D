@@ -47,9 +47,15 @@ void Mesh::loadOFF (const std::string & filename) {
 
   // Test function
   findNeighbours();
-  shapeApproximation();
-    
-  // Vec3f a(0.0,3.0,0.0);
+  partitioning();
+
+  for (unsigned int i = 0; i < iteNum; i++)
+    {
+      proxyFitting();
+      partitioning();
+    }
+  
+  // vec3f a(0.0,3.0,0.0);
   // Vec3f b(4.0,0.0,0.0);
   // Vec3f c(0.0,0.0,0.0);
   // Proxy p(a,b);
@@ -158,8 +164,8 @@ void Mesh::findNeighbours() {
       calculateNormal(T[i]);
     }
 
-    // for (unsigned int j = 0; j < T.size (); j++)   
-    //   cout << T[j].lable << endl;
+  // for (unsigned int j = 0; j < T.size (); j++)   
+  //   cout << T[j].lable << endl;
   
 #if debug == 1
   for (unsigned int i = 0; i < T.size (); i++)
@@ -172,7 +178,8 @@ void Mesh::findNeighbours() {
 }
 
 
-Triangle Mesh::popLeastErrTriangle(std::vector<Triangle > &errQue){
+//Triangle Mesh::popLeastErrTriangle(std::vector<Triangle > &errQue){
+Triangle Mesh::popLeastErrTriangle(){
   Triangle t;
   int index = 0;
   float minerr = 1000.0;
@@ -194,36 +201,99 @@ Triangle Mesh::popLeastErrTriangle(std::vector<Triangle > &errQue){
   return t;
 }
 
-void Mesh::shapeApproximation() {
 
-  std::vector<Triangle > errQue;
-  //  Proxy p[num];
-  int seed[num];  
+void Mesh::proxyFitting() {
+
+
+  for (unsigned int i = 0; i < num; i++)
+    {
+      Vec3f X = Vec3f(0.0, 0.0, 0.0);
+      Vec3f N = Vec3f(0.0, 0.0, 0.0);
+
+      for (std::vector<Triangle >::iterator it = p[i].T.begin() ; it != p[i].T.end(); ++it)
+	{
+	  float area = 0.0;
+	  area = 0.5 * (*it).n.length();
+	  N += area * (*it).n;
+	  X += (V[(*it).v[0]].p + V[(*it).v[1]].p + V[(*it).v[2]].p);
+	}
+      
+      N.normalize();
+      cout << p[i].T.size() << endl;
+      // cout << N << endl;
+      // change the proxy normal and center
+      p[i].n = N;
+      if(!p[i].T.empty())
+	p[i].x = X/(3*p[i].T.size());
+    }
+
+  // clear all flag
+  for (unsigned int i = 0; i < T.size (); i++)
+    {
+      T[i].tag = -1.0;
+      T[i].lable = -1.0;
+      T[i].err = -1.0;
+    }
+  
+  
+  /// find seed triangle  
+  for (unsigned int i = 0; i < num; i++)
+    {
+      float minerr = 1000.0;
+      float Terr= 0.0;
+      int  minIndex = 0;
+      
+      for (std::vector<Triangle >::iterator it = p[i].T.begin() ; it != p[i].T.end(); ++it)
+	{
+	  Terr = distortionError(p[i], *it);
+	  if( Terr < minerr) {
+	    minerr = Terr; 
+	    minIndex = it->index; 
+	  }
+	}
+  
+      T[minIndex].lable = i;
+      // cout << minIndex << endl;
+      //clear all triangles
+      p[i].T.clear();
+      p[i].T.push_back(T[minIndex]);
+    }
+  
+  
+}
+
+
+
+
+void Mesh::partitioning() {
+
+
   Triangle popTriangle;
 
   /* initialize random seed: */
   srand (time(NULL));
   
   /* generate secret number between 1 and 10: */
-  for (unsigned int i = 0; i < num; i++){
-    seed[i]= rand() % T.size() + 1;
-    p[i].T.push_back(T[seed[i]]);
-    p[i].x = (V[p[i].T[0].v[0]].p + V[p[i].T[0].v[1]].p + V[p[i].T[0].v[2]].p)/3;
-    p[i].n = p[i].T[0].n;
-
-
-
-#if debug == 1
-    cout <<"Init Proxy Barycenter: " << p[i].x << endl;
-    cout << "Init Proxy Normal: "<< p[i].n << endl;
-    cout << seed[i] << endl;
-#endif
+  if(flagFirst == true){
+    for (unsigned int i = 0; i < num; i++)
+      seed[i]= rand() % T.size() + 1;
+    
+  
+    for (unsigned int i = 0; i < num; i++){
+      p[i].T.push_back(T[seed[i]]);
+      T[seed[i]].lable = i; 
+      p[i].x = (V[p[i].T[0].v[0]].p + V[p[i].T[0].v[1]].p + V[p[i].T[0].v[2]].p)/3;
+      p[i].n = p[i].T[0].n;
+    }
+    
+    flagFirst = false;
   }
   
-  // initialization for the error queque
-  for (unsigned int i = 0; i < num; i++)
-    {
 #if debug == 1
+    for (unsigned int i = 0; i < num; i++){
+      cout <<"Init Proxy Barycenter: " << p[i].x << endl;
+      cout << "Init Proxy Normal: "<< p[i].n << endl;
+      cout << seed[i] << endl;
       // see wheather initialization is sucessful
       cout << p[i].T.size() << endl;
       cout << p[i].T[0].lable<< endl;
@@ -231,8 +301,13 @@ void Mesh::shapeApproximation() {
       cout << p[i].T[0].err<< endl;
       cout << p[i].n << endl;
       cout << p[i].T[0].neighbours.size() << endl;    
+    }
 #endif
-
+  
+  // initialization for the error queque
+  for (unsigned int i = 0; i < num; i++)
+    {
+      // initalize tag and lable
       for (std::vector<int>::iterator it = p[i].T[0].neighbours.begin() ; it != p[i].T[0].neighbours.end(); ++it)
 	{
 	  T[*it].tag = i;
@@ -242,13 +317,14 @@ void Mesh::shapeApproximation() {
 	}
       std::cout << '\n';
     }
-    
-  //  std::cout <<"Initial Queque Size :" << errQue.size() << endl;
 
+
+
+  //  std::cout <<"Initial Queque Size :" << errQue.size() << endl;
   while(!errQue.empty()){
     //std::cout <<"Initial Queque Size :" << errQue.size() << endl;
     /// pop the triangle with the smallest error
-    popTriangle = popLeastErrTriangle(errQue);
+    popTriangle = popLeastErrTriangle();
 
 
     if ( T[popTriangle.index].lable == -1){
