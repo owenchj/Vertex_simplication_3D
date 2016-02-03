@@ -349,3 +349,52 @@ void Mesh::partitioning() {
   
   
 }
+
+void Mesh::remesh(){
+  for(int i=0;i<num;i++){
+    //initialise the "added" as -1
+    for(int k=0;k<num;k++){
+      p[i].added = -1;
+    }
+    
+    VR.push_back(new Vertex(p[i].x,p[i].n));
+
+    for(std::vector<Triangle>::iterator it = p[i].T.begin(); it != p[i].T.end(); ++it){
+      for(int j=0;j<T[*it].neighbours.size();j++){
+	//If the lable of the triangles are different
+	if(T[*it].lable != T[T[*it].neighbours[j]].lable){
+	  //then add this lable as a adjacentProxy
+	  int plable = T[T[*it].neighbours[j]].lable;
+	  //ensure that we only add the new lable
+	  if(p[plable].added == -1){
+	    p[i].adjacentProxy.push_bach(plable);
+	    p[plable].added = 1;
+	  }
+   	}
+      }
+    }
+  }
+
+  //search for the triangles of proxy
+  for(int i=0;i<num;i++){
+    for(int k=0;k<p[i].adjacentProxy.size();k++){
+	int pikLable = p[i].adjacentProxy[k];
+	if(pikLable>i){
+	for(int m=k+1;m<p[i].adjacentProxy.size();m++){
+	  int pjmLable = p[pikLable].adjacentProxy[m];
+	  if(pjmLable>pikLable){
+	  for(int j=0;j<p[pjmLable].adjacentProxy.size();j++){
+	    int temp = p[pjmLable].adjacentProxy[j];
+	    if(pikLable == temp){
+	      TR.push_back(i,pikLable,pjmLable);  
+	    }
+	  }
+	  } 
+	}
+	}
+    }
+  }
+ 
+
+  
+}

@@ -106,6 +106,8 @@ class Proxy {
   Vec3f n;
   // TODO
   std::vector<Triangle> T;
+  std::vector<int> adjacentProxy;
+  int added;
 };
 
 /// A Mesh class, storing a list of vertices and a list of triangles indexed over it.
@@ -117,8 +119,11 @@ class Mesh {
   bool flagFirst;
   std::vector<Vertex> V;
   std::vector<Triangle> T;
-  std::vector<Triangle > errQue;
+  std::vector<Triangle> errQue;
 
+  std::vector<Vertex> VR;
+  std::vector<Triangle> TR;
+  
   inline Mesh () {
     flagFirst = true; 
     for (unsigned int i = 0; i < num; i++)  seed[i] = i;
@@ -152,5 +157,5 @@ class Mesh {
   //  Triangle popLeastErrTriangle(std::vector<Triangle > &errQue);
   Triangle popLeastErrTriangle();
 
-
+  void remesh();
 };
