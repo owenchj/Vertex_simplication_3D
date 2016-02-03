@@ -263,22 +263,35 @@ void Mesh::proxyFitting() {
 }
 
 
-
+bool Mesh::repeatedNum(int testNum){
+  for (unsigned int i = 0; i < num; i++){
+    if( seed[i] == testNum ) 
+      return true;
+  }
+  
+  return false;
+}
 
 void Mesh::partitioning() {
 
-
+  int initSeed;
   Triangle popTriangle;
 
   /* initialize random seed: */
   srand (time(NULL));
   
-  /* generate secret number between 1 and 10: */
+  /* generate secret number between 0 and T.size() - 1: */
   if(flagFirst == true){
+    for (unsigned int i = 0; i < num; i++){
+      initSeed = rand() % T.size();
+      if(repeatedNum(initSeed))	i--;
+      seed[i]= initSeed;
+    }
+
     for (unsigned int i = 0; i < num; i++)
-      seed[i]= rand() % T.size() + 1;
-    
-  
+      cout << seed[i] <<' ';
+
+
     for (unsigned int i = 0; i < num; i++){
       p[i].T.push_back(T[seed[i]]);
       T[seed[i]].lable = i; 

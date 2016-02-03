@@ -23,7 +23,7 @@
 #include <time.h>       /* time */
 
 /// proxy numbers
-#define num 6
+#define num 20
 /// iteration num 
 #define iteNum 5
 /// open debug cout
@@ -121,7 +121,7 @@ class Mesh {
 
   inline Mesh () {
     flagFirst = true; 
-    for (unsigned int i = 0; i < num; i++)  seed[i] = i;
+    for (unsigned int i = 0; i < num; i++)  seed[i] = -1;
   }
     
   /// Loads the mesh from a <file>.off
@@ -151,6 +151,8 @@ class Mesh {
 
   //  Triangle popLeastErrTriangle(std::vector<Triangle > &errQue);
   Triangle popLeastErrTriangle();
+
+  bool repeatedNum(int i);
 
 
 };

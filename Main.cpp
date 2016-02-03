@@ -21,7 +21,7 @@
 using namespace std;
 
 /// proxy num
-#define num 6
+#define num 20
 
 static const unsigned int DEFAULT_SCREENWIDTH = 1024;
 static const unsigned int DEFAULT_SCREENHEIGHT = 768;
@@ -131,7 +131,8 @@ void drawScene () {
     for (unsigned int j = 0; j < mesh.p[i].T.size (); j++){
       for (unsigned int k = 0; k < 3; k++) {
 	const Vertex & v = mesh.V[mesh.p[i].T[j].v[k]];
-	glColor3f (Color[i][0], Color[i][1], Color[i][2]);
+	//	glColor3f (Color[i][0], Color[i][1], Color[i][2]);
+	glColor3f ((float)i/num, (float)i/num, (float)i/num);
 	//	glNormal3f (v.n[0], v.n[1], v.n[2]); // Specifies current normal vertex   
 	glVertex3f (v.p[0], v.p[1], v.p[2]); // Emit a vertex (one triangle is emitted each time 3 vertices are emitted)
       }
