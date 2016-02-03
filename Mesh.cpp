@@ -204,6 +204,7 @@ Triangle Mesh::popLeastErrTriangle(){
 
 void Mesh::proxyFitting() {
 
+  int sum = 0;
 
   for (unsigned int i = 0; i < num; i++)
     {
@@ -219,7 +220,8 @@ void Mesh::proxyFitting() {
 	}
       
       N.normalize();
-      cout << p[i].T.size() << endl;
+      sum += p[i].T.size();
+      //cout << p[i].T.size() << endl;
       // cout << N << endl;
       // change the proxy normal and center
       p[i].n = N;
@@ -227,6 +229,8 @@ void Mesh::proxyFitting() {
 	p[i].x = X/(3*p[i].T.size());
     }
 
+  cout << sum << endl;
+  
   // clear all flag
   for (unsigned int i = 0; i < T.size (); i++)
     {
@@ -285,12 +289,12 @@ void Mesh::partitioning() {
     for (unsigned int i = 0; i < num; i++){
       initSeed = rand() % T.size();
       if(repeatedNum(initSeed))	i--;
-      seed[i]= initSeed;
+      else seed[i]= initSeed;
     }
 
     for (unsigned int i = 0; i < num; i++)
       cout << seed[i] <<' ';
-
+    cout << endl;
 
     for (unsigned int i = 0; i < num; i++){
       p[i].T.push_back(T[seed[i]]);
@@ -307,12 +311,11 @@ void Mesh::partitioning() {
       cout <<"Init Proxy Barycenter: " << p[i].x << endl;
       cout << "Init Proxy Normal: "<< p[i].n << endl;
       cout << seed[i] << endl;
-      // see wheather initialization is sucessful
+      see wheather initialization is sucessful
       cout << p[i].T.size() << endl;
       cout << p[i].T[0].lable<< endl;
       cout << p[i].T[0].tag<< endl;
       cout << p[i].T[0].err<< endl;
-      cout << p[i].n << endl;
       cout << p[i].T[0].neighbours.size() << endl;    
     }
 #endif
@@ -328,7 +331,7 @@ void Mesh::partitioning() {
 	  // std::cout << ' ' << T[*it].err;
 	  errQue.push_back(T[*it]);
 	}
-      std::cout << '\n';
+      //      std::cout << '\n';
     }
 
 
