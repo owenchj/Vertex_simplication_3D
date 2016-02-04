@@ -1,8 +1,8 @@
-Informatique Graphique 3D et Réalité Virtuelle 
+Informatique Graphique 3D et RÃ©alitÃ© Virtuelle 
 
 Travaux Pratique
 
-Traitement Géométrique
+Traitement GÃ©omÃ©trique
 
 
 Compilation : cd src; make -f Makefile.linux
@@ -11,4 +11,3 @@ Remplacer linux par cygwin pour une installation sous Linux/Cygwin
 
 Execution : ./main models/<fichier.off>
 
-Contact: Tamy Boubekeur (tamy.boubekeur@telecom-paristech.fr)

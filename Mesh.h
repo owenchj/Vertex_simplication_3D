@@ -23,9 +23,9 @@
 #include <time.h>       /* time */
 
 /// proxy numbers
-#define num 20
+#define num 200
 /// iteration num 
-#define iteNum 5
+#define iteNum 10
 /// open debug cout
 #define debug 0
 
@@ -99,13 +99,15 @@ class Triangle {
 
 class Proxy {
  public:
-  inline Proxy () {}
-  inline Proxy (const Vec3f & x, const Vec3f & n) : x (x), n (n) {}
+  inline Proxy () { added = -1;}
+  inline Proxy (const Vec3f & x, const Vec3f & n, int added) : x (x), n (n), added(added) {}
   inline virtual ~Proxy () {}
   Vec3f x;
   Vec3f n;
   // TODO
   std::vector<Triangle> T;
+  std::vector<int> adjacentProxy;
+  int added;
 };
 
 /// A Mesh class, storing a list of vertices and a list of triangles indexed over it.
@@ -117,8 +119,11 @@ class Mesh {
   bool flagFirst;
   std::vector<Vertex> V;
   std::vector<Triangle> T;
-  std::vector<Triangle > errQue;
+  std::vector<Triangle> errQue;
 
+  std::vector<Vertex> VR;
+  std::vector<Triangle> TR;
+  
   inline Mesh () {
     flagFirst = true; 
     for (unsigned int i = 0; i < num; i++)  seed[i] = -1;
@@ -154,5 +159,8 @@ class Mesh {
 
   bool repeatedNum(int i);
 
+  void remesh();
+
+  bool isSame(Triangle &T0, Triangle &T1);
 
 };

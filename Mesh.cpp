@@ -54,7 +54,8 @@ void Mesh::loadOFF (const std::string & filename) {
       proxyFitting();
       partitioning();
     }
-  
+
+  remesh();
   // vec3f a(0.0,3.0,0.0);
   // Vec3f b(4.0,0.0,0.0);
   // Vec3f c(0.0,0.0,0.0);
@@ -307,17 +308,17 @@ void Mesh::partitioning() {
   }
   
 #if debug == 1
-    for (unsigned int i = 0; i < num; i++){
-      cout <<"Init Proxy Barycenter: " << p[i].x << endl;
-      cout << "Init Proxy Normal: "<< p[i].n << endl;
-      cout << seed[i] << endl;
-      see wheather initialization is sucessful
+  for (unsigned int i = 0; i < num; i++){
+    cout <<"Init Proxy Barycenter: " << p[i].x << endl;
+    cout << "Init Proxy Normal: "<< p[i].n << endl;
+    cout << seed[i] << endl;
+    see wheather initialization is sucessful
       cout << p[i].T.size() << endl;
-      cout << p[i].T[0].lable<< endl;
-      cout << p[i].T[0].tag<< endl;
-      cout << p[i].T[0].err<< endl;
-      cout << p[i].T[0].neighbours.size() << endl;    
-    }
+    cout << p[i].T[0].lable<< endl;
+    cout << p[i].T[0].tag<< endl;
+    cout << p[i].T[0].err<< endl;
+    cout << p[i].T[0].neighbours.size() << endl;    
+  }
 #endif
   
   // initialization for the error queque
@@ -362,6 +363,117 @@ void Mesh::partitioning() {
   //   for (unsigned int j = 0; j < p[i].T.size (); j++)   
   //     cout << p[i].T[j].index << endl;
   
+  
+  
+}
+
+
+
+bool Mesh::isSame(Triangle &T0, Triangle &T1){
+  Vec3f t0[3];
+  Vec3f t1[3];
+  int cors = 0;
+
+  for (unsigned int i = 0; i < 3; i++)
+    {
+      t0[i]= V[T0.v[i]].p ;
+      t1[i]= V[T1.v[i]].p ;
+    }
+
+  for (unsigned int i = 0; i < 3; i++)
+    {
+      if(t0[i] == t1[0] || t0[i] == t1[1] || t0[i] == t1[2])
+	cors++;
+    }
+  
+  if(cors == 3)
+    return true;
+  else 
+    return false;
+}
+
+
+void Mesh::remesh(){
+  Vertex temp;
+  Triangle tempTri;
+  bool same = false;
+  
+  for(int i = 0; i < num; i++){
+    //initialise the "added" as -1
+    for(int k=0; k < num; k++){
+      p[k].added = -1;
+    }
+    
+    temp.p = p[i].x;
+    temp.n = p[i].n;
+    cout << p[i].x <<endl;
+    VR.push_back(temp);
+    
+    for(std::vector<Triangle>::iterator it = p[i].T.begin(); it != p[i].T.end(); ++it){
+      for(unsigned int j = 0; j < (*it).neighbours.size(); j++){
+	int plable = T[(*it).neighbours[j]].lable;
+	//cout << (*it).lable << ' ' <<plable;
+	//If the lable of the triangles are different
+	if((*it).lable != plable){
+	  //then add this lable as a adjacentProxy
+	  //ensure that we only add the new lable
+	  //cout << '*' << p[plable].added << endl;
+	  if(p[plable].added == -1){
+	    
+	    p[i].adjacentProxy.push_back(plable);
+	    p[plable].added = 1;
+	  }
+	}
+	//cout << endl;
+      }
+    }
+  }
+
+  // for(int i = 0; i < num; i++){
+  //   cout << i << ":";
+  //   for(std::vector<int>::iterator it = p[i].adjacentProxy.begin(); it != p[i].adjacentProxy.end(); ++it){
+  //     cout << *it << ' ';
+  //   }
+  //   cout << endl;    
+  // }
+
+
+  //search for the triangles of proxy
+  for(unsigned int i = 0; i < num; i++){
+    for(unsigned int k = 0; k< p[i].adjacentProxy.size(); k++){
+      unsigned int pikLable = p[i].adjacentProxy[k];
+      if(pikLable > i){
+	//if(1){
+	for(unsigned int m = k+1; m < p[i].adjacentProxy.size(); m++){
+	  unsigned int pjmLable = p[i].adjacentProxy[m];
+	  //if(pjmLable > pikLable){
+	  if(1){
+	    for(unsigned int j = 0; j < p[pjmLable].adjacentProxy.size(); j++){
+	      unsigned int temp = p[pjmLable].adjacentProxy[j];
+	      if(pikLable == temp){
+		tempTri.v[0] = i;
+		tempTri.v[1] = pikLable;
+		tempTri.v[2] = pjmLable;
+
+		for(unsigned int n = 0; n < TR.size(); n++)
+		  if(isSame(TR[n], tempTri)){
+		    same = true;
+		    break;
+		  }
+		//cout << tempTri.v[0] << ' '<< tempTri.v[1] << ' '<< tempTri.v[2] << endl;
+		if(!same){
+		  cout << tempTri.v[0] << "*"<< tempTri.v[1] << "*"<< tempTri.v[2] << endl;  
+		  TR.push_back(tempTri);  
+		}
+		same = false;
+	      }
+	    }
+	  } 
+	}
+      }
+    }
+  }
+  // delete repeated triangle
   
   
 }
