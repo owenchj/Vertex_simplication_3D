@@ -56,8 +56,8 @@ void Mesh::loadOFF (const std::string & filename) {
     }
 
   vertexClass();
-
-  remesh();
+  edgeExtraction();
+  //  remesh();
   // vec3f a(0.0,3.0,0.0);
   // Vec3f b(4.0,0.0,0.0);
   // Vec3f c(0.0,0.0,0.0);
@@ -369,6 +369,112 @@ void Mesh::partitioning() {
   
 }
 
+
+bool Mesh::isLine(Vertex & V0, Vertex & V1, int * p){
+  int cnt = 0;
+
+  for (unsigned int i = 0; i < V0.proxies.size() ; i++){
+    for (unsigned int j = 0; j < V1.proxies.size() ; j++){
+      if(V0.proxies[i] ==  V1.proxies[j]){
+	p[cnt] = V0.proxies[i];
+	cnt++;
+      }
+    }
+  }
+  
+  if(cnt == 2) return true;
+  else return false;
+}
+
+bool Mesh::isinLine(Vertex & V, anchorPair & P){
+  
+  for(unsigned int i = 0; i < 2; i++){
+    if(V.proxies[i] == P.proxy[0] && V.proxies[1 - i] == P.proxy[1] )
+      return true;
+  }
+  return false;
+}
+
+void Mesh::edgeExtraction(){
+
+  std::vector<Vertex> anchorV;
+  std::vector<Vertex> edgeV;
+
+  std::vector<anchorPair> anchorP;
+  anchorPair temp;
+  
+  for (unsigned int i = 0; i < V.size() ; i++){
+    if(V[i].proxies.size() >= 3)   anchorV.push_back(V[i]);
+    else if(V[i].proxies.size() == 2)   edgeV.push_back(V[i]);
+  }
+  
+  for (unsigned int i = 0; i < anchorV.size() ; i++){
+    for(unsigned int j = i + 1; j < anchorV.size() ; j++){
+      if(isLine(anchorV[i], anchorV[j], temp.proxy)){
+	temp.anchorVertex[0] = anchorV[i];
+	temp.anchorVertex[1] = anchorV[j];
+	anchorP.push_back(temp);
+      }
+    }
+  }
+
+  
+#if debug == 1
+  for (unsigned int i = 0; i < anchorV.size() ; i++){
+    for(unsigned int j = 0; j < anchorV[i].proxies.size() ; j++){
+      cout << anchorV[i].proxies[j] << ' ';
+    }
+    cout << endl;
+  }
+  
+  for (unsigned int i = 0; i < edgeV.size() ; i++){
+    for(unsigned int j = 0; j < edgeV[i].proxies.size() ; j++){
+      cout << edgeV[i].proxies[j] << ' ';
+    }
+    cout << endl;
+  }
+
+  for (unsigned int i = 0; i < anchorP.size() ; i++){
+    
+    for(unsigned int j = 0; j < anchorP[i].anchorVertex[0].proxies.size() ; j++){
+      cout << anchorP[i].anchorVertex[0].proxies[j] << ' ';
+    }
+    cout << endl;
+
+    for(unsigned int j = 0; j < anchorP[i].anchorVertex[0].proxies.size() ; j++){
+      cout << anchorP[i].anchorVertex[1].proxies[j] << ' ';
+    }
+    
+    cout << anchorP[i].proxy[0] << " + " << anchorP[i].proxy[1] << endl;
+  }
+  
+  cout << endl;
+#endif
+  
+  // find the edge vertex to pair line 
+  for (unsigned int i = 0; i < anchorP.size() ; i++){
+    for (unsigned int j = 0; j < edgeV.size() ; j++){
+      if(isinLine(edgeV[j], anchorP[i])){
+	anchorP[i].edges.push_back(edgeV[j]);
+      }
+    }
+  }
+  
+  for (unsigned int i = 0; i < anchorP.size() ; i++){
+    cout << anchorP[i].edges.size() <<endl;  
+    for(unsigned int j = 0; j < anchorP[i].edges.size() ; j++){
+
+      for (std::vector<int>::iterator it = anchorP[i].edges[j].proxies.begin() ; it != anchorP[i].edges[j].proxies.end(); ++it)
+	cout << *it << ' ';
+      cout << endl;  
+    }
+  }
+  
+    
+}
+
+
+
 void Mesh::vertexClass(){
   
   std::vector<vector<int> > classVectex(V.size());
@@ -401,19 +507,22 @@ void Mesh::vertexClass(){
     }
   
   
+  for (unsigned int i = 0; i < V.size() ; i++){
+    V[i].proxies = classVectex[i] ;
+  }
+  
+  // for (unsigned int i = 0; i < V.size() ; i++)
+  //   {
+  //     for (std::vector<int>::iterator it = V[i].proxies.begin() ; it != V[i].proxies.end(); ++it)
+  // 	cout <<  *it << ' ';
+  //     cout <<  endl;
+  //   }
 
-  for (unsigned int i = 0; i < V.size() ; i++)
-      V[i].proxies = classVectex[i] ;
-
-  for (unsigned int i = 0; i < V.size() ; i++)
-    {
-      for (std::vector<int>::iterator it = V[i].proxies.begin() ; it != V[i].proxies.end(); ++it)
-  	cout <<  *it << ' ';
-      cout <<  endl;
-    }
+  
   
   
 }
+
 
 bool Mesh::isSame(Triangle &T0, Triangle &T1){
   Vec3f t0[3];

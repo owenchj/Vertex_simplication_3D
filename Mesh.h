@@ -32,7 +32,8 @@
 
 
 
-/// A simple vertex class storing position and normal
+
+/// a simple vertex class storing position and normal
 class Vertex {
  public:
   inline Vertex () {}
@@ -94,6 +95,23 @@ class Triangle {
   Vec3f n;
   int index;
 
+};
+
+
+class anchorPair {
+ public:
+  inline anchorPair () {}
+  inline anchorPair (const Vertex & v0, const Vertex & v1, int p0, int p1) {
+    anchorVertex[0] = v0;
+    anchorVertex[1] = v1;
+    proxy[0] = p0;
+    proxy[1] = p1;
+  }
+  
+  inline virtual ~anchorPair () {}
+  Vertex anchorVertex[2];
+  int proxy[2];
+  std::vector<Vertex > edges;  
 };
 
 
@@ -165,7 +183,13 @@ class Mesh {
 
   // avoid add repeated triangle to result
   bool isSame(Triangle &T0, Triangle &T1);
-
+  
+  bool isLine(Vertex & V0, Vertex & V1, int *p);
+  
+  bool isinLine(Vertex & V, anchorPair & P);
+  
   void vertexClass();
+
+  void edgeExtraction();
 
 };
