@@ -55,6 +55,8 @@ void Mesh::loadOFF (const std::string & filename) {
       partitioning();
     }
 
+  vertexClass();
+
   remesh();
   // vec3f a(0.0,3.0,0.0);
   // Vec3f b(4.0,0.0,0.0);
@@ -367,7 +369,51 @@ void Mesh::partitioning() {
   
 }
 
+void Mesh::vertexClass(){
+  
+  std::vector<vector<int> > classVectex(V.size());
+  int flag = 1;
+  
+  for (unsigned int i = 0; i < T.size (); i++)
+    {
+      for(unsigned int j = 0; j < 3; j++){
 
+	int index = T[i].v[j];
+	// cout << i << " "<< j << "*";
+	// cout << index << ": "<< classVectex[index].size() << ' ';
+	
+	if(classVectex[index].size()){
+	  
+	  for(unsigned int k = 0; k < classVectex[index].size(); k++){
+	    if(classVectex[index][k] == T[i].lable)
+	      flag = 0;
+	  }
+	  
+	  if(flag == 1)
+	    classVectex[index].push_back(T[i].lable) ;
+	  
+	  flag = 1;
+	  
+	}
+	else
+	  classVectex[index].push_back(T[i].lable) ;
+      }
+    }
+  
+  
+
+  for (unsigned int i = 0; i < V.size() ; i++)
+      V[i].proxies = classVectex[i] ;
+
+  for (unsigned int i = 0; i < V.size() ; i++)
+    {
+      for (std::vector<int>::iterator it = V[i].proxies.begin() ; it != V[i].proxies.end(); ++it)
+  	cout <<  *it << ' ';
+      cout <<  endl;
+    }
+  
+  
+}
 
 bool Mesh::isSame(Triangle &T0, Triangle &T1){
   Vec3f t0[3];
@@ -442,8 +488,8 @@ void Mesh::remesh(){
   for(unsigned int i = 0; i < num; i++){
     for(unsigned int k = 0; k< p[i].adjacentProxy.size(); k++){
       unsigned int pikLable = p[i].adjacentProxy[k];
-      if(pikLable > i){
-	//if(1){
+      // if(pikLable > i){
+	if(1){
 	for(unsigned int m = k+1; m < p[i].adjacentProxy.size(); m++){
 	  unsigned int pjmLable = p[i].adjacentProxy[m];
 	  //if(pjmLable > pikLable){

@@ -23,7 +23,7 @@
 #include <time.h>       /* time */
 
 /// proxy numbers
-#define num 200
+#define num 6
 /// iteration num 
 #define iteNum 10
 /// open debug cout
@@ -40,6 +40,7 @@ class Vertex {
   inline virtual ~Vertex () {}
   Vec3f p;
   Vec3f n;
+  std::vector<int > proxies;  
 };
 
 /// A Triangle class expressed as a triplet of indices (over an external vertex list)
@@ -157,10 +158,14 @@ class Mesh {
   //  Triangle popLeastErrTriangle(std::vector<Triangle > &errQue);
   Triangle popLeastErrTriangle();
 
+  // avoid repeated random num
   bool repeatedNum(int i);
-
+  
   void remesh();
 
+  // avoid add repeated triangle to result
   bool isSame(Triangle &T0, Triangle &T1);
+
+  void vertexClass();
 
 };
