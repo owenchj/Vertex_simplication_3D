@@ -54,7 +54,10 @@ void Mesh::loadOFF (const std::string & filename) {
       proxyFitting();
       partitioning();
     }
-  
+
+  vertexClass();
+
+  remesh();
   // vec3f a(0.0,3.0,0.0);
   // Vec3f b(4.0,0.0,0.0);
   // Vec3f c(0.0,0.0,0.0);
@@ -204,6 +207,7 @@ Triangle Mesh::popLeastErrTriangle(){
 
 void Mesh::proxyFitting() {
 
+  int sum = 0;
 
   for (unsigned int i = 0; i < num; i++)
     {
@@ -219,7 +223,8 @@ void Mesh::proxyFitting() {
 	}
       
       N.normalize();
-      cout << p[i].T.size() << endl;
+      sum += p[i].T.size();
+      //cout << p[i].T.size() << endl;
       // cout << N << endl;
       // change the proxy normal and center
       p[i].n = N;
@@ -227,6 +232,8 @@ void Mesh::proxyFitting() {
 	p[i].x = X/(3*p[i].T.size());
     }
 
+  cout << sum << endl;
+  
   // clear all flag
   for (unsigned int i = 0; i < T.size (); i++)
     {
@@ -263,22 +270,35 @@ void Mesh::proxyFitting() {
 }
 
 
-
+bool Mesh::repeatedNum(int testNum){
+  for (unsigned int i = 0; i < num; i++){
+    if( seed[i] == testNum ) 
+      return true;
+  }
+  
+  return false;
+}
 
 void Mesh::partitioning() {
 
-
+  int initSeed;
   Triangle popTriangle;
 
   /* initialize random seed: */
   srand (time(NULL));
   
-  /* generate secret number between 1 and 10: */
+  /* generate secret number between 0 and T.size() - 1: */
   if(flagFirst == true){
+    for (unsigned int i = 0; i < num; i++){
+      initSeed = rand() % T.size();
+      if(repeatedNum(initSeed))	i--;
+      else seed[i]= initSeed;
+    }
+
     for (unsigned int i = 0; i < num; i++)
-      seed[i]= rand() % T.size() + 1;
-    
-  
+      cout << seed[i] <<' ';
+    cout << endl;
+
     for (unsigned int i = 0; i < num; i++){
       p[i].T.push_back(T[seed[i]]);
       T[seed[i]].lable = i; 
@@ -290,18 +310,17 @@ void Mesh::partitioning() {
   }
   
 #if debug == 1
-    for (unsigned int i = 0; i < num; i++){
-      cout <<"Init Proxy Barycenter: " << p[i].x << endl;
-      cout << "Init Proxy Normal: "<< p[i].n << endl;
-      cout << seed[i] << endl;
-      // see wheather initialization is sucessful
+  for (unsigned int i = 0; i < num; i++){
+    cout <<"Init Proxy Barycenter: " << p[i].x << endl;
+    cout << "Init Proxy Normal: "<< p[i].n << endl;
+    cout << seed[i] << endl;
+    see wheather initialization is sucessful
       cout << p[i].T.size() << endl;
-      cout << p[i].T[0].lable<< endl;
-      cout << p[i].T[0].tag<< endl;
-      cout << p[i].T[0].err<< endl;
-      cout << p[i].n << endl;
-      cout << p[i].T[0].neighbours.size() << endl;    
-    }
+    cout << p[i].T[0].lable<< endl;
+    cout << p[i].T[0].tag<< endl;
+    cout << p[i].T[0].err<< endl;
+    cout << p[i].T[0].neighbours.size() << endl;    
+  }
 #endif
   
   // initialization for the error queque
@@ -315,7 +334,7 @@ void Mesh::partitioning() {
 	  // std::cout << ' ' << T[*it].err;
 	  errQue.push_back(T[*it]);
 	}
-      std::cout << '\n';
+      //      std::cout << '\n';
     }
 
 
@@ -350,51 +369,161 @@ void Mesh::partitioning() {
   
 }
 
+
+void Mesh::vertexClass(){
+  
+  std::vector<vector<int> > classVectex(V.size());
+  int flag = 1;
+  
+  for (unsigned int i = 0; i < T.size (); i++)
+    {
+      for(unsigned int j = 0; j < 3; j++){
+
+	int index = T[i].v[j];
+	// cout << i << " "<< j << "*";
+	// cout << index << ": "<< classVectex[index].size() << ' ';
+	
+	if(classVectex[index].size()){
+	  
+	  for(unsigned int k = 0; k < classVectex[index].size(); k++){
+	    if(classVectex[index][k] == T[i].lable)
+	      flag = 0;
+	  }
+	  
+	  if(flag == 1)
+	    classVectex[index].push_back(T[i].lable) ;
+	  
+	  flag = 1;
+	  
+	}
+	else
+	  classVectex[index].push_back(T[i].lable) ;
+      }
+    }
+  
+  
+
+  for (unsigned int i = 0; i < V.size() ; i++)
+      V[i].proxies = classVectex[i] ;
+
+  for (unsigned int i = 0; i < V.size() ; i++)
+    {
+      for (std::vector<int>::iterator it = V[i].proxies.begin() ; it != V[i].proxies.end(); ++it)
+  	cout <<  *it << ' ';
+      cout <<  endl;
+    }
+  
+  
+}
+
+bool Mesh::isSame(Triangle &T0, Triangle &T1){
+  Vec3f t0[3];
+  Vec3f t1[3];
+  int cors = 0;
+
+  for (unsigned int i = 0; i < 3; i++)
+    {
+      t0[i]= V[T0.v[i]].p ;
+      t1[i]= V[T1.v[i]].p ;
+    }
+
+  for (unsigned int i = 0; i < 3; i++)
+    {
+      if(t0[i] == t1[0] || t0[i] == t1[1] || t0[i] == t1[2])
+	cors++;
+    }
+  
+  if(cors == 3)
+    return true;
+  else 
+    return false;
+}
+
+
 void Mesh::remesh(){
-  for(int i=0;i<num;i++){
+  Vertex temp;
+  Triangle tempTri;
+  bool same = false;
+  
+  for(int i = 0; i < num; i++){
     //initialise the "added" as -1
-    for(int k=0;k<num;k++){
-      p[i].added = -1;
+    for(int k=0; k < num; k++){
+      p[k].added = -1;
     }
     
-    VR.push_back(new Vertex(p[i].x,p[i].n));
-
+    temp.p = p[i].x;
+    temp.n = p[i].n;
+    cout << p[i].x <<endl;
+    VR.push_back(temp);
+    
     for(std::vector<Triangle>::iterator it = p[i].T.begin(); it != p[i].T.end(); ++it){
-      for(int j=0;j<T[*it].neighbours.size();j++){
+      for(unsigned int j = 0; j < (*it).neighbours.size(); j++){
+	int plable = T[(*it).neighbours[j]].lable;
+	//cout << (*it).lable << ' ' <<plable;
 	//If the lable of the triangles are different
-	if(T[*it].lable != T[T[*it].neighbours[j]].lable){
+	if((*it).lable != plable){
 	  //then add this lable as a adjacentProxy
-	  int plable = T[T[*it].neighbours[j]].lable;
 	  //ensure that we only add the new lable
+	  //cout << '*' << p[plable].added << endl;
 	  if(p[plable].added == -1){
-	    p[i].adjacentProxy.push_bach(plable);
+	    
+	    p[i].adjacentProxy.push_back(plable);
 	    p[plable].added = 1;
 	  }
-   	}
+	}
+	//cout << endl;
+
       }
     }
   }
 
+
+  // for(int i = 0; i < num; i++){
+  //   cout << i << ":";
+  //   for(std::vector<int>::iterator it = p[i].adjacentProxy.begin(); it != p[i].adjacentProxy.end(); ++it){
+  //     cout << *it << ' ';
+  //   }
+  //   cout << endl;    
+  // }
+
+
   //search for the triangles of proxy
-  for(int i=0;i<num;i++){
-    for(int k=0;k<p[i].adjacentProxy.size();k++){
-	int pikLable = p[i].adjacentProxy[k];
-	if(pikLable>i){
-	for(int m=k+1;m<p[i].adjacentProxy.size();m++){
-	  int pjmLable = p[pikLable].adjacentProxy[m];
-	  if(pjmLable>pikLable){
-	  for(int j=0;j<p[pjmLable].adjacentProxy.size();j++){
-	    int temp = p[pjmLable].adjacentProxy[j];
-	    if(pikLable == temp){
-	      TR.push_back(i,pikLable,pjmLable);  
+  for(unsigned int i = 0; i < num; i++){
+    for(unsigned int k = 0; k< p[i].adjacentProxy.size(); k++){
+      unsigned int pikLable = p[i].adjacentProxy[k];
+      // if(pikLable > i){
+	if(1){
+	for(unsigned int m = k+1; m < p[i].adjacentProxy.size(); m++){
+	  unsigned int pjmLable = p[i].adjacentProxy[m];
+	  //if(pjmLable > pikLable){
+	  if(1){
+	    for(unsigned int j = 0; j < p[pjmLable].adjacentProxy.size(); j++){
+	      unsigned int temp = p[pjmLable].adjacentProxy[j];
+	      if(pikLable == temp){
+		tempTri.v[0] = i;
+		tempTri.v[1] = pikLable;
+		tempTri.v[2] = pjmLable;
+
+		for(unsigned int n = 0; n < TR.size(); n++)
+		  if(isSame(TR[n], tempTri)){
+		    same = true;
+		    break;
+		  }
+		//cout << tempTri.v[0] << ' '<< tempTri.v[1] << ' '<< tempTri.v[2] << endl;
+		if(!same){
+		  cout << tempTri.v[0] << "*"<< tempTri.v[1] << "*"<< tempTri.v[2] << endl;  
+		  TR.push_back(tempTri);  
+		}
+		same = false;
+	      }
 	    }
-	  }
 	  } 
 	}
-	}
+      }
     }
   }
- 
+  // delete repeated triangle
+  
 
   
 }

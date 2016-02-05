@@ -1,3 +1,5 @@
+
+
 // --------------------------------------------------------------------------
 // Copyright(C) 2009-2015
 // Tamy Boubekeur
@@ -25,7 +27,7 @@
 /// proxy numbers
 #define num 6
 /// iteration num 
-#define iteNum 5
+#define iteNum 10
 /// open debug cout
 #define debug 0
 
@@ -40,6 +42,7 @@ class Vertex {
   inline virtual ~Vertex () {}
   Vec3f p;
   Vec3f n;
+  std::vector<int > proxies;  
 };
 
 /// A Triangle class expressed as a triplet of indices (over an external vertex list)
@@ -99,8 +102,8 @@ class Triangle {
 
 class Proxy {
  public:
-  inline Proxy () {}
-  inline Proxy (const Vec3f & x, const Vec3f & n) : x (x), n (n) {}
+  inline Proxy () { added = -1;}
+  inline Proxy (const Vec3f & x, const Vec3f & n, int added) : x (x), n (n), added(added) {}
   inline virtual ~Proxy () {}
   Vec3f x;
   Vec3f n;
@@ -126,7 +129,7 @@ class Mesh {
   
   inline Mesh () {
     flagFirst = true; 
-    for (unsigned int i = 0; i < num; i++)  seed[i] = i;
+    for (unsigned int i = 0; i < num; i++)  seed[i] = -1;
   }
     
   /// Loads the mesh from a <file>.off
@@ -157,5 +160,14 @@ class Mesh {
   //  Triangle popLeastErrTriangle(std::vector<Triangle > &errQue);
   Triangle popLeastErrTriangle();
 
+  // avoid repeated random num
+  bool repeatedNum(int i);
+  
   void remesh();
+
+  // avoid add repeated triangle to result
+  bool isSame(Triangle &T0, Triangle &T1);
+
+  void vertexClass();
+
 };

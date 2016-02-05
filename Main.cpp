@@ -34,15 +34,16 @@ static bool fullScreen = false;
 
 static Camera camera;
 static Mesh mesh;
+static bool showResult = true;
 
-GLfloat Color[num][3] = {
-1.0, 0.0, 0.0,
-0.0, 1.0, 0.0,
-0.0, 0.0, 1.0,
-0.0, 1.0, 1.0,
-1.0, 1.0, 0.0,
-1.0, 0.0, 1.0
-};
+// GLfloat Color[num][3] = {
+// 1.0, 0.0, 0.0,
+// 0.0, 1.0, 0.0,
+// 0.0, 0.0, 1.0,
+// 0.0, 1.0, 1.0,
+// 1.0, 1.0, 0.0,
+// 1.0, 0.0, 1.0
+// };
 
 void printUsage () {
   std::cerr << std::endl 
@@ -101,7 +102,8 @@ void initMaterial () {
 
 void init (const char * modelFilename) {
   glCullFace (GL_BACK);     // Specifies the faces to cull (here the ones pointing away from the camera)
-  glEnable (GL_CULL_FACE); // Enables face culling (based on the orientation defined by the CW/CCW enumeration).
+  //  glEnable (GL_CULL_FACE); // Enables face culling (based on the orientation defined by the CW/CCW enumeration).
+  glDisable (GL_CULL_FACE); 
   glDepthFunc (GL_LESS); // Specify the depth test for the z-buffer
   glEnable (GL_DEPTH_TEST); // Enable the z-buffer in the rasterization
   glLineWidth (2.0); // Set the width of edges in GL_LINE polygon mode
@@ -118,24 +120,37 @@ void init (const char * modelFilename) {
 
 void drawScene () {
   glBegin (GL_TRIANGLES);
-  // for (unsigned int i = 0; i < mesh.T.size (); i++) 
-  //   for (unsigned int j = 0; j < 3; j++) {
-  //     const Vertex & v = mesh.V[mesh.T[i].v[j]];
-  //     glNormal3f (v.n[0], v.n[1], v.n[2]); // Specifies current normal vertex   
-  //     glVertex3f (v.p[0], v.p[1], v.p[2]); // Emit a vertex (one triangle is emitted each time 3 vertices are emitted)
-  //   }
-  // for (unsigned int i = 0; i < 6; i++) 
-  //   cout << mesh.p[i].T.size () << endl;
 
-  for (unsigned int i = 0; i < num; i++) 
-    for (unsigned int j = 0; j < mesh.p[i].T.size (); j++){
-      for (unsigned int k = 0; k < 3; k++) {
-	const Vertex & v = mesh.V[mesh.p[i].T[j].v[k]];
-	glColor3f (Color[i][0], Color[i][1], Color[i][2]);
-	//	glNormal3f (v.n[0], v.n[1], v.n[2]); // Specifies current normal vertex   
-	glVertex3f (v.p[0], v.p[1], v.p[2]); // Emit a vertex (one triangle is emitted each time 3 vertices are emitted)
+  //   cout << mesh.TR.size() << endl;
+  if(showResult){
+    for (unsigned int i = 0; i < mesh.TR.size (); i++) 
+      for (unsigned int j = 0; j < 3; j++) {
+	const Vertex & v = mesh.VR[mesh.TR[i].v[j]];
+	glColor3f (1.0, 1.0, 0.0);   
+	//      glColor3f ((float)i/num, (float)i/num, (float)i/num);
+	// cout << mesh.TR[i].v[j] << ":";
+	// cout << v.p[0] << ' '  << v.p[1] << ' ' << v.p[2] << endl;
+	glVertex3f (v.p[0], v.p[1], v.p[2]); 
       }
-    }
+  }
+  else{ 
+    for (unsigned int i = 0; i < num; i++) 
+      for (unsigned int j = 0; j < mesh.p[i].T.size (); j++){
+	for (unsigned int k = 0; k < 3; k++) {
+	  const Vertex & v = mesh.V[mesh.p[i].T[j].v[k]];
+	  //	glColor3f (Color[i][0], Color[i][1], Color[i][2]);
+	  glColor3f ((float)i/num, (float)i/num, (float)i/num);
+	  //	glNormal3f (v.n[0], v.n[1], v.n[2]); // Specifies current normal vertex   
+	  glVertex3f (v.p[0], v.p[1], v.p[2]); // Emit a vertex (one triangle is emitted each time 3 vertices are emitted)
+	}
+      }
+  }
+  // glBegin (GL_POINTS);
+  // for (unsigned int j = 0; j < 20; j++) {
+  //   const Vertex & v = mesh.VR[j];
+  //   glColor3f (1.0, 1.0, 0.0);   
+  //   glVertex3f (v.p[0], v.p[1], v.p[2]); // Emit a vertex (one triangle 
+  // }
   
   
   glEnd (); 
@@ -168,6 +183,13 @@ void key (unsigned char keyPressed, int x, int y) {
   case 27:
     exit (0);
     break;
+  case 'r':
+    showResult = true;
+    break;
+  case 'o':
+    showResult = false;
+    break;
+
   case 'w':
     GLint mode[2];
     glGetIntegerv (GL_POLYGON_MODE, mode);
