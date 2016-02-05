@@ -57,6 +57,7 @@ void Mesh::loadOFF (const std::string & filename) {
 
   vertexClass();
   edgeExtraction();
+  triangulation();
   //  remesh();
   // vec3f a(0.0,3.0,0.0);
   // Vec3f b(4.0,0.0,0.0);
@@ -66,8 +67,10 @@ void Mesh::loadOFF (const std::string & filename) {
 }
 
 void Mesh::recomputeNormals () {
-  for (unsigned int i = 0; i < V.size (); i++)
+  for (unsigned int i = 0; i < V.size (); i++){
     V[i].n = Vec3f (0.0, 0.0, 0.0);
+    V[i].index = i;
+  }
   for (unsigned int i = 0; i < T.size (); i++) {
     Vec3f e01 = V[T[i].v[1]].p -  V[T[i].v[0]].p;
     Vec3f e02 = V[T[i].v[2]].p -  V[T[i].v[0]].p;
@@ -370,6 +373,52 @@ void Mesh::partitioning() {
 }
 
 
+float Mesh::distanceToLine(Vertex & V, anchorPair & P){
+  Vec3f p0 = V.p;
+  Vec3f p1 = P.anchorVertex[0].p;
+  Vec3f p2 = P.anchorVertex[1].p;
+  Vec3f ni = p[P.proxy[0]].n;
+  Vec3f nj = p[P.proxy[1]].n;
+
+  
+  float distance = cross((p0 - p1), (p0 - p2)).length() / (p1 - p2).length();
+  float judge = distance * (cross(ni, nj).length()/(ni.length() * nj.length()))/dist(p1, p2);
+
+  cout << judge << endl;
+
+  // only these vertex which greater than treshold can pass
+  if(judge > threshold)
+    return distance;
+  else 
+    return 0.0;
+}
+
+void Mesh::findMoreAnchor(){
+  //  anchorPair temp0, temp1;
+  
+  for (unsigned int i = 0; i < anchorP.size() ; i++){
+    float maxD = -1.0;
+    float distance = 0.0;
+    int maxIndex = 0;
+    
+    for(unsigned int j = 0; j < anchorP[i].edges.size() ; j++){
+      distance = distanceToLine(anchorP[i].edges[j], anchorP[i]);
+      if(distance > maxD){
+	maxD = distance;
+	maxIndex = j;
+      }
+    }
+ 
+    if(maxD > 0.0){
+      cout << "!" << endl;
+      anchorV.push_back(anchorP[i].edges[maxIndex]);
+    }
+    
+  }
+  
+}
+
+
 bool Mesh::isLine(Vertex & V0, Vertex & V1, int * p){
   int cnt = 0;
 
@@ -388,19 +437,17 @@ bool Mesh::isLine(Vertex & V0, Vertex & V1, int * p){
 
 bool Mesh::isinLine(Vertex & V, anchorPair & P){
   
-  for(unsigned int i = 0; i < 2; i++){
-    if(V.proxies[i] == P.proxy[0] && V.proxies[1 - i] == P.proxy[1] )
+  if((V.proxies[0] == P.proxy[0] && V.proxies[1] == P.proxy[1]) 
+     || (V.proxies[1] == P.proxy[0] && V.proxies[0] == P.proxy[1]))
       return true;
-  }
-  return false;
+    else return false;
 }
 
 void Mesh::edgeExtraction(){
 
-  std::vector<Vertex> anchorV;
-  std::vector<Vertex> edgeV;
-
-  std::vector<anchorPair> anchorP;
+  //  std::vector<Vertex> anchorV;
+  //  std::vector<Vertex> edgeV;
+  //  std::vector<anchorPair> anchorP;
   anchorPair temp;
   
   for (unsigned int i = 0; i < V.size() ; i++){
@@ -459,21 +506,92 @@ void Mesh::edgeExtraction(){
       }
     }
   }
+
   
+#if debug == 1
   for (unsigned int i = 0; i < anchorP.size() ; i++){
     cout << anchorP[i].edges.size() <<endl;  
     for(unsigned int j = 0; j < anchorP[i].edges.size() ; j++){
 
       for (std::vector<int>::iterator it = anchorP[i].edges[j].proxies.begin() ; it != anchorP[i].edges[j].proxies.end(); ++it)
 	cout << *it << ' ';
+    }
       cout << endl;  
+  }
+#endif
+  
+  findMoreAnchor();  
+  
+  //  find the anchor vertex for each proxy
+  for (unsigned int i = 0; i < anchorV.size() ; i++){
+    for(std::vector<int>::iterator it = anchorV[i].proxies.begin(); it != anchorV[i].proxies.end(); ++it){
+      p[*it].anchorV.push_back(anchorV[i]);
     }
   }
   
-    
+// #if debug == 1
+//   for (unsigned int i = 0; i < num ; i++){
+//     cout << p[i].anchorV.size() << endl;
+//   }
+// #endif  
+
+  //  find the inner vertex for each proxy
+  for (unsigned int i = 0; i < V.size() ; i++){
+    for(std::vector<int>::iterator it = V[i].proxies.begin(); it != V[i].proxies.end(); ++it){
+      p[*it].V.push_back(V[i]);
+    }
+  }
+  
+  ///#if debug == 1
+  for (unsigned int i = 0; i < num ; i++){
+    cout << p[i].V.size() << endl;
+  }
+  //#endif  
+  
 }
 
+void Mesh::triangulation(){
+  //initialization for anchor veertex each proxy
+  for (unsigned int i = 0; i < num ; i++){
+    for(std::vector<Vertex>::iterator it = p[i].V.begin(); it != p[i].V.end(); ++it){
+      for (unsigned int j = 0; j < p[i].anchorV.size() ; j++)
+	p[i].anchorV[j].lable = j;
+      }
+    }
 
+  for (unsigned int i = 0; i < num ; i++){
+    for(std::vector<Vertex>::iterator it = p[i].V.begin(); it != p[i].V.end(); ++it){
+      Vec3f p0 = (*it).p;
+      float minDis = 1000.0;
+      int index = -1;
+
+      for (unsigned int j = 0; j < p[i].anchorV.size() ; j++){
+      	Vec3f p1 = p[i].anchorV[j].p;
+      	float distance = dist(p0, p1);
+
+      	if( distance < minDis ){
+      	  minDis = distance;
+      	  index = j;
+      	}
+	
+      }
+      
+      (*it).lable = index;
+      
+    }
+  }
+
+#if debug == 1
+    for (unsigned int i = 0; i < num ; i++){
+      for(std::vector<Vertex>::iterator it = p[i].V.begin(); it != p[i].V.end(); ++it){
+	cout << (*it).lable << ' ';
+      }
+      cout << endl;
+    }
+#endif
+
+
+}
 
 void Mesh::vertexClass(){
   

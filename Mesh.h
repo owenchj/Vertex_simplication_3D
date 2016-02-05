@@ -23,9 +23,11 @@
 #include <time.h>       /* time */
 
 /// proxy numbers
-#define num 6
+#define num 20
 /// iteration num 
 #define iteNum 10
+/// threshold for edge extraction
+#define threshold 0.25
 /// open debug cout
 #define debug 0
 
@@ -36,12 +38,14 @@
 /// a simple vertex class storing position and normal
 class Vertex {
  public:
-  inline Vertex () {}
-  inline Vertex (const Vec3f & p, const Vec3f & n) : p (p), n (n) {}
+  inline Vertex () {lable = -1; index = -1;}
+  inline Vertex (const Vec3f & p, const Vec3f & n, int & lable, int & index) : p (p), n (n), lable(lable), index(index){}
   inline virtual ~Vertex () {}
   Vec3f p;
   Vec3f n;
   std::vector<int > proxies;  
+  int lable;
+  int index;
 };
 
 /// A Triangle class expressed as a triplet of indices (over an external vertex list)
@@ -124,8 +128,11 @@ class Proxy {
   Vec3f x;
   Vec3f n;
   // TODO
+  std::vector<Vertex > V;  
   std::vector<Triangle> T;
   std::vector<int> adjacentProxy;
+  std::vector<Vertex > anchorV;  
+
   int added;
 };
 
@@ -142,7 +149,11 @@ class Mesh {
 
   std::vector<Vertex> VR;
   std::vector<Triangle> TR;
-  
+
+  std::vector<Vertex> anchorV;
+  std::vector<Vertex> edgeV;
+  std::vector<anchorPair> anchorP;
+
   inline Mesh () {
     flagFirst = true; 
     for (unsigned int i = 0; i < num; i++)  seed[i] = -1;
@@ -192,4 +203,9 @@ class Mesh {
 
   void edgeExtraction();
 
+  void findMoreAnchor();
+
+  float distanceToLine(Vertex & V, anchorPair & P);
+
+  void triangulation();
 };

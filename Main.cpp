@@ -21,7 +21,7 @@
 using namespace std;
 
 /// proxy num
-#define num 6
+#define num 20
 
 static const unsigned int DEFAULT_SCREENWIDTH = 1024;
 static const unsigned int DEFAULT_SCREENHEIGHT = 768;
@@ -119,21 +119,35 @@ void init (const char * modelFilename) {
 }
 
 void drawScene () {
-  glBegin (GL_TRIANGLES);
+  // glBegin (GL_TRIANGLES);
+    // cout << mesh.edgeV.size() << endl;    
+    // cout << mesh.anchorV.size() << endl;    
 
-  //   cout << mesh.TR.size() << endl;
   if(showResult){
-    for (unsigned int i = 0; i < mesh.TR.size (); i++) 
-      for (unsigned int j = 0; j < 3; j++) {
-	const Vertex & v = mesh.VR[mesh.TR[i].v[j]];
-	glColor3f (1.0, 1.0, 0.0);   
-	//      glColor3f ((float)i/num, (float)i/num, (float)i/num);
-	// cout << mesh.TR[i].v[j] << ":";
-	// cout << v.p[0] << ' '  << v.p[1] << ' ' << v.p[2] << endl;
-	glVertex3f (v.p[0], v.p[1], v.p[2]); 
-      }
+    glBegin (GL_POINTS);
+    // for (unsigned int i = 0; i < mesh.TR.size (); i++) 
+    //   for (unsigned int j = 0; j < 3; j++) {
+    // 	const Vertex & v = mesh.VR[mesh.TR[i].v[j]];
+    // 	glColor3f (1.0, 1.0, 0.0);   
+    // 	//      glColor3f ((float)i/num, (float)i/num, (float)i/num);
+    // 	// cout << mesh.TR[i].v[j] << ":";
+    // 	// cout << v.p[0] << ' '  << v.p[1] << ' ' << v.p[2] << endl;
+    // 	glVertex3f (v.p[0], v.p[1], v.p[2]); 
+    for (unsigned int i = 0; i < mesh.anchorV.size (); i++) {
+      const Vertex & v = mesh.anchorV[i];
+      glColor3f (1.0, 1.0, 0.0);   
+      glVertex3f (v.p[0], v.p[1], v.p[2]); 
+    }
+    
+    // for (unsigned int i = 0; i < mesh.edgeV.size (); i++) {
+    //   const Vertex & v = mesh.edgeV[i];
+    //   glColor3f (1.0, 0.0, 1.0);   
+    //   glVertex3f (v.p[0], v.p[1], v.p[2]); 
+    // }
+    
   }
   else{ 
+glBegin (GL_TRIANGLES);
     for (unsigned int i = 0; i < num; i++) 
       for (unsigned int j = 0; j < mesh.p[i].T.size (); j++){
 	for (unsigned int k = 0; k < 3; k++) {
