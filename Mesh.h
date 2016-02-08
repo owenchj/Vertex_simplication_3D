@@ -23,13 +23,15 @@
 #include <time.h>       /* time */
 
 /// proxy numbers
-#define num 20
+#define num 100
 /// iteration num 
 #define iteNum 10
 /// threshold for edge extraction
 #define threshold 0.25
 /// open debug cout
 #define debug 0
+/// use edge extration 
+#define edgeExtra 1
 
 
 
@@ -41,11 +43,20 @@ class Vertex {
   inline Vertex () {lable = -1; index = -1;}
   inline Vertex (const Vec3f & p, const Vec3f & n, int & lable, int & index) : p (p), n (n), lable(lable), index(index){}
   inline virtual ~Vertex () {}
+  inline Vertex & operator= (const Vertex & t) {
+    p = t.p;
+    n = t.n;
+    proxies = t.proxies;
+    lable = t.lable;
+    index = t.index;
+    return (*this);
+  }
+  
   Vec3f p;
   Vec3f n;
   std::vector<int > proxies;  
   int lable;
-  int index;
+  unsigned int index;
 };
 
 /// A Triangle class expressed as a triplet of indices (over an external vertex list)
@@ -97,25 +108,31 @@ class Triangle {
   int tag;
   float err;
   Vec3f n;
-  int index;
+  unsigned int index;
 
 };
 
 
 class anchorPair {
  public:
-  inline anchorPair () {}
-  inline anchorPair (const Vertex & v0, const Vertex & v1, int p0, int p1) {
+  inline anchorPair () {
+    proxy[0] = -1;
+    proxy[1] = -1;
+    used = -1;
+}
+  inline anchorPair (const Vertex & v0, const Vertex & v1, int p0, int p1, int used) {
     anchorVertex[0] = v0;
     anchorVertex[1] = v1;
     proxy[0] = p0;
     proxy[1] = p1;
+    used = -1;
   }
   
   inline virtual ~anchorPair () {}
   Vertex anchorVertex[2];
   int proxy[2];
   std::vector<Vertex > edges;  
+  int used;
 };
 
 
@@ -132,6 +149,7 @@ class Proxy {
   std::vector<Triangle> T;
   std::vector<int> adjacentProxy;
   std::vector<Vertex > anchorV;  
+  std::vector<anchorPair> anchorP;
 
   int added;
 };
@@ -153,7 +171,8 @@ class Mesh {
   std::vector<Vertex> anchorV;
   std::vector<Vertex> edgeV;
   std::vector<anchorPair> anchorP;
-
+  std::vector<anchorPair> anchorPCopy;
+ 
   inline Mesh () {
     flagFirst = true; 
     for (unsigned int i = 0; i < num; i++)  seed[i] = -1;
@@ -190,11 +209,6 @@ class Mesh {
   // avoid repeated random num
   bool repeatedNum(int i);
   
-  void remesh();
-
-  // avoid add repeated triangle to result
-  bool isSame(Triangle &T0, Triangle &T1);
-  
   bool isLine(Vertex & V0, Vertex & V1, int *p);
   
   bool isinLine(Vertex & V, anchorPair & P);
@@ -208,4 +222,7 @@ class Mesh {
   float distanceToLine(Vertex & V, anchorPair & P);
 
   void triangulation();
+
+  void insertTriangle();
+
 };

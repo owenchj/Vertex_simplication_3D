@@ -20,9 +20,6 @@
 
 using namespace std;
 
-/// proxy num
-#define num 20
-
 static const unsigned int DEFAULT_SCREENWIDTH = 1024;
 static const unsigned int DEFAULT_SCREENHEIGHT = 768;
 static const string DEFAULT_MESH_FILE ("models/max_50k.off");
@@ -34,7 +31,7 @@ static bool fullScreen = false;
 
 static Camera camera;
 static Mesh mesh;
-static bool showResult = true;
+static unsigned int showResult = 0;
 
 // GLfloat Color[num][3] = {
 // 1.0, 0.0, 0.0,
@@ -123,16 +120,8 @@ void drawScene () {
     // cout << mesh.edgeV.size() << endl;    
     // cout << mesh.anchorV.size() << endl;    
 
-  if(showResult){
+  if(showResult == 0){
     glBegin (GL_POINTS);
-    // for (unsigned int i = 0; i < mesh.TR.size (); i++) 
-    //   for (unsigned int j = 0; j < 3; j++) {
-    // 	const Vertex & v = mesh.VR[mesh.TR[i].v[j]];
-    // 	glColor3f (1.0, 1.0, 0.0);   
-    // 	//      glColor3f ((float)i/num, (float)i/num, (float)i/num);
-    // 	// cout << mesh.TR[i].v[j] << ":";
-    // 	// cout << v.p[0] << ' '  << v.p[1] << ' ' << v.p[2] << endl;
-    // 	glVertex3f (v.p[0], v.p[1], v.p[2]); 
     for (unsigned int i = 0; i < mesh.anchorV.size (); i++) {
       const Vertex & v = mesh.anchorV[i];
       glColor3f (1.0, 1.0, 0.0);   
@@ -146,25 +135,41 @@ void drawScene () {
     // }
     
   }
-  else{ 
-glBegin (GL_TRIANGLES);
+  else if(showResult == 1){ 
+    glBegin (GL_TRIANGLES);
     for (unsigned int i = 0; i < num; i++) 
       for (unsigned int j = 0; j < mesh.p[i].T.size (); j++){
 	for (unsigned int k = 0; k < 3; k++) {
 	  const Vertex & v = mesh.V[mesh.p[i].T[j].v[k]];
-	  //	glColor3f (Color[i][0], Color[i][1], Color[i][2]);
 	  glColor3f ((float)i/num, (float)i/num, (float)i/num);
-	  //	glNormal3f (v.n[0], v.n[1], v.n[2]); // Specifies current normal vertex   
-	  glVertex3f (v.p[0], v.p[1], v.p[2]); // Emit a vertex (one triangle is emitted each time 3 vertices are emitted)
+	  glVertex3f (v.p[0], v.p[1], v.p[2]); 
 	}
       }
   }
-  // glBegin (GL_POINTS);
-  // for (unsigned int j = 0; j < 20; j++) {
-  //   const Vertex & v = mesh.VR[j];
-  //   glColor3f (1.0, 1.0, 0.0);   
-  //   glVertex3f (v.p[0], v.p[1], v.p[2]); // Emit a vertex (one triangle 
-  // }
+  else if(showResult == 2){ 
+    glBegin (GL_TRIANGLES);
+    for (unsigned int i = 0; i < mesh.TR.size (); i++) 
+      for (unsigned int j = 0; j < 3; j++) {
+    	const Vertex & v = mesh.V[mesh.TR[i].v[j]];
+    	//glColor3f (1.0, 1.0, 0.0);   
+	glColor3f ((float)i/mesh.TR.size (), (float)i/mesh.TR.size (), (float)i/mesh.TR.size ());
+    	//      glColor3f ((float)i/num, (float)i/num, (float)i/num);
+    	// cout << mesh.TR[i].v[j] << ":";
+    	// cout << v.p[0] << ' '  << v.p[1] << ' ' << v.p[2] << endl;
+    	glVertex3f (v.p[0], v.p[1], v.p[2]); 
+      }  
+  }
+  else if(showResult == 3){
+    glBegin (GL_LINES);
+    for (unsigned int i = 0; i < mesh.anchorPCopy.size (); i++) 
+      if(mesh.anchorPCopy[i].proxy[0] != -1 && mesh.anchorPCopy[i].proxy[1] != -1){
+	for (unsigned int j = 0; j < 2; j++) {
+	  const Vertex & v = mesh.anchorPCopy[i].anchorVertex[j];
+	  glColor3f (1.0, 1.0, 0.0);   
+	  glVertex3f (v.p[0], v.p[1], v.p[2]); 
+	}
+      }  
+  }
   
   
   glEnd (); 
@@ -198,10 +203,16 @@ void key (unsigned char keyPressed, int x, int y) {
     exit (0);
     break;
   case 'r':
-    showResult = true;
+    showResult = 0;
     break;
   case 'o':
-    showResult = false;
+    showResult = 1;
+    break;
+  case 't':
+    showResult = 2;
+    break;
+  case 'l':
+    showResult = 3;
     break;
 
   case 'w':
