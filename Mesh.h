@@ -23,23 +23,40 @@
 #include <time.h>       /* time */
 
 /// proxy numbers
-#define num 6
+#define num 100
 /// iteration num 
-#define iteNum 5
+#define iteNum 10
+/// threshold for edge extraction
+#define threshold 0.25
 /// open debug cout
 #define debug 0
+/// use edge extration 
+#define edgeExtra 1
 
 
 
 
-/// A simple vertex class storing position and normal
+
+/// a simple vertex class storing position and normal
 class Vertex {
  public:
-  inline Vertex () {}
-  inline Vertex (const Vec3f & p, const Vec3f & n) : p (p), n (n) {}
+  inline Vertex () {lable = -1; index = -1;}
+  inline Vertex (const Vec3f & p, const Vec3f & n, int & lable, int & index) : p (p), n (n), lable(lable), index(index){}
   inline virtual ~Vertex () {}
+  inline Vertex & operator= (const Vertex & t) {
+    p = t.p;
+    n = t.n;
+    proxies = t.proxies;
+    lable = t.lable;
+    index = t.index;
+    return (*this);
+  }
+  
   Vec3f p;
   Vec3f n;
+  std::vector<int > proxies;  
+  int lable;
+  unsigned int index;
 };
 
 /// A Triangle class expressed as a triplet of indices (over an external vertex list)
@@ -91,21 +108,50 @@ class Triangle {
   int tag;
   float err;
   Vec3f n;
-  int index;
+  unsigned int index;
 
+};
+
+
+class anchorPair {
+ public:
+  inline anchorPair () {
+    proxy[0] = -1;
+    proxy[1] = -1;
+    used = -1;
+}
+  inline anchorPair (const Vertex & v0, const Vertex & v1, int p0, int p1, int used) {
+    anchorVertex[0] = v0;
+    anchorVertex[1] = v1;
+    proxy[0] = p0;
+    proxy[1] = p1;
+    used = -1;
+  }
+  
+  inline virtual ~anchorPair () {}
+  Vertex anchorVertex[2];
+  int proxy[2];
+  std::vector<Vertex > edges;  
+  int used;
 };
 
 
 
 class Proxy {
  public:
-  inline Proxy () {}
-  inline Proxy (const Vec3f & x, const Vec3f & n) : x (x), n (n) {}
+  inline Proxy () { added = -1;}
+  inline Proxy (const Vec3f & x, const Vec3f & n, int added) : x (x), n (n), added(added) {}
   inline virtual ~Proxy () {}
   Vec3f x;
   Vec3f n;
   // TODO
+  std::vector<Vertex > V;  
   std::vector<Triangle> T;
+  std::vector<int> adjacentProxy;
+  std::vector<Vertex > anchorV;  
+  std::vector<anchorPair> anchorP;
+
+  int added;
 };
 
 /// A Mesh class, storing a list of vertices and a list of triangles indexed over it.
@@ -117,11 +163,19 @@ class Mesh {
   bool flagFirst;
   std::vector<Vertex> V;
   std::vector<Triangle> T;
-  std::vector<Triangle > errQue;
+  std::vector<Triangle> errQue;
 
+  std::vector<Vertex> VR;
+  std::vector<Triangle> TR;
+
+  std::vector<Vertex> anchorV;
+  std::vector<Vertex> edgeV;
+  std::vector<anchorPair> anchorP;
+  std::vector<anchorPair> anchorPCopy;
+ 
   inline Mesh () {
     flagFirst = true; 
-    for (unsigned int i = 0; i < num; i++)  seed[i] = i;
+    for (unsigned int i = 0; i < num; i++)  seed[i] = -1;
   }
     
   /// Loads the mesh from a <file>.off
@@ -152,5 +206,23 @@ class Mesh {
   //  Triangle popLeastErrTriangle(std::vector<Triangle > &errQue);
   Triangle popLeastErrTriangle();
 
+  // avoid repeated random num
+  bool repeatedNum(int i);
+  
+  bool isLine(Vertex & V0, Vertex & V1, int *p);
+  
+  bool isinLine(Vertex & V, anchorPair & P);
+  
+  void vertexClass();
+
+  void edgeExtraction();
+
+  void findMoreAnchor();
+
+  float distanceToLine(Vertex & V, anchorPair & P);
+
+  void triangulation();
+
+  void insertTriangle();
 
 };

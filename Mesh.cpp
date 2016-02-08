@@ -54,7 +54,12 @@ void Mesh::loadOFF (const std::string & filename) {
       proxyFitting();
       partitioning();
     }
-  
+
+  vertexClass();
+  edgeExtraction();
+  triangulation();
+  insertTriangle();
+  //  remesh();
   // vec3f a(0.0,3.0,0.0);
   // Vec3f b(4.0,0.0,0.0);
   // Vec3f c(0.0,0.0,0.0);
@@ -63,8 +68,10 @@ void Mesh::loadOFF (const std::string & filename) {
 }
 
 void Mesh::recomputeNormals () {
-  for (unsigned int i = 0; i < V.size (); i++)
+  for (unsigned int i = 0; i < V.size (); i++){
     V[i].n = Vec3f (0.0, 0.0, 0.0);
+    V[i].index = i;
+  }
   for (unsigned int i = 0; i < T.size (); i++) {
     Vec3f e01 = V[T[i].v[1]].p -  V[T[i].v[0]].p;
     Vec3f e02 = V[T[i].v[2]].p -  V[T[i].v[0]].p;
@@ -204,6 +211,7 @@ Triangle Mesh::popLeastErrTriangle(){
 
 void Mesh::proxyFitting() {
 
+  int sum = 0;
 
   for (unsigned int i = 0; i < num; i++)
     {
@@ -219,7 +227,8 @@ void Mesh::proxyFitting() {
 	}
       
       N.normalize();
-      cout << p[i].T.size() << endl;
+      sum += p[i].T.size();
+      //cout << p[i].T.size() << endl;
       // cout << N << endl;
       // change the proxy normal and center
       p[i].n = N;
@@ -227,6 +236,8 @@ void Mesh::proxyFitting() {
 	p[i].x = X/(3*p[i].T.size());
     }
 
+  cout << sum << endl;
+  
   // clear all flag
   for (unsigned int i = 0; i < T.size (); i++)
     {
@@ -263,22 +274,37 @@ void Mesh::proxyFitting() {
 }
 
 
-
+bool Mesh::repeatedNum(int testNum){
+  for (unsigned int i = 0; i < num; i++){
+    if( seed[i] == testNum ) 
+      return true;
+  }
+  
+  return false;
+}
 
 void Mesh::partitioning() {
 
-
+  int initSeed;
   Triangle popTriangle;
 
   /* initialize random seed: */
   srand (time(NULL));
   
-  /* generate secret number between 1 and 10: */
+  /* generate secret number between 0 and T.size() - 1: */
   if(flagFirst == true){
+    for (unsigned int i = 0; i < num; i++){
+      initSeed = rand() % T.size();
+      if(repeatedNum(initSeed))	i--;
+      else seed[i]= initSeed;
+    }
+
+#if debug == 1
     for (unsigned int i = 0; i < num; i++)
-      seed[i]= rand() % T.size() + 1;
-    
-  
+      cout << seed[i] <<' ';
+    cout << endl;
+#endif
+
     for (unsigned int i = 0; i < num; i++){
       p[i].T.push_back(T[seed[i]]);
       T[seed[i]].lable = i; 
@@ -290,18 +316,17 @@ void Mesh::partitioning() {
   }
   
 #if debug == 1
-    for (unsigned int i = 0; i < num; i++){
-      cout <<"Init Proxy Barycenter: " << p[i].x << endl;
-      cout << "Init Proxy Normal: "<< p[i].n << endl;
-      cout << seed[i] << endl;
-      // see wheather initialization is sucessful
-      cout << p[i].T.size() << endl;
-      cout << p[i].T[0].lable<< endl;
-      cout << p[i].T[0].tag<< endl;
-      cout << p[i].T[0].err<< endl;
-      cout << p[i].n << endl;
-      cout << p[i].T[0].neighbours.size() << endl;    
-    }
+  for (unsigned int i = 0; i < num; i++){
+    cout <<"Init Proxy Barycenter: " << p[i].x << endl;
+    cout << "Init Proxy Normal: "<< p[i].n << endl;
+    cout << seed[i] << endl;
+    //see wheather initialization is sucessful
+    cout << p[i].T.size() << endl;
+    cout << p[i].T[0].lable<< endl;
+    cout << p[i].T[0].tag<< endl;
+    cout << p[i].T[0].err<< endl;
+    cout << p[i].T[0].neighbours.size() << endl;    
+  }
 #endif
   
   // initialization for the error queque
@@ -315,7 +340,7 @@ void Mesh::partitioning() {
 	  // std::cout << ' ' << T[*it].err;
 	  errQue.push_back(T[*it]);
 	}
-      std::cout << '\n';
+      //      std::cout << '\n';
     }
 
 
@@ -342,10 +367,372 @@ void Mesh::partitioning() {
     } // popTriangle.lable == -1
   }
   
-  // for (unsigned int i = 0; i < 6; i++) 
-  //   for (unsigned int j = 0; j < p[i].T.size (); j++)   
-  //     cout << p[i].T[j].index << endl;
-  
   
   
 }
+
+
+float Mesh::distanceToLine(Vertex & V, anchorPair & P){
+  Vec3f p0 = V.p;
+  Vec3f p1 = P.anchorVertex[0].p;
+  Vec3f p2 = P.anchorVertex[1].p;
+  Vec3f ni = p[P.proxy[0]].n;
+  Vec3f nj = p[P.proxy[1]].n;
+
+  
+  float distance = cross((p0 - p1), (p0 - p2)).length() / (p1 - p2).length();
+  float judge = distance * (cross(ni, nj).length()/(ni.length() * nj.length()))/dist(p1, p2);
+
+  //cout << judge << endl;
+
+  // only these vertex which greater than treshold can pass
+  if(judge > threshold)
+    return distance;
+  else 
+    return 0.0;
+}
+
+void Mesh::findMoreAnchor(){
+  anchorPair temp, temp1;
+  
+  for (unsigned int i = 0; i < anchorP.size() ; i++){
+    float maxD = -1.0;
+    float distance = 0.0;
+    int maxIndex = 0;
+    
+    for(unsigned int j = 0; j < anchorP[i].edges.size() ; j++){
+      distance = distanceToLine(anchorP[i].edges[j], anchorP[i]);
+      if(distance > maxD){
+	maxD = distance;
+	maxIndex = j;
+      }
+    }
+ 
+    if(maxD > 0.0){
+      //cout << "!" << endl;
+      anchorV.push_back(anchorP[i].edges[maxIndex]);
+      
+      
+      temp.anchorVertex[0] = anchorP[i].edges[maxIndex];
+      temp.anchorVertex[1] = anchorP[i].anchorVertex[0];
+      temp.proxy[0] = anchorP[i].proxy[0];
+      temp.proxy[1] = anchorP[i].proxy[1];
+      anchorPCopy.push_back(temp);
+
+      temp1.anchorVertex[0] = anchorP[i].edges[maxIndex];
+      temp1.anchorVertex[1] = anchorP[i].anchorVertex[1];
+      temp1.proxy[0] = anchorP[i].proxy[0];
+      temp1.proxy[1] = anchorP[i].proxy[1];
+      anchorPCopy.push_back(temp1);
+            
+      anchorPCopy[i].proxy[0] = -1 ;
+      anchorPCopy[i].proxy[1] = -1 ;
+    }
+    
+  }
+  
+}
+
+
+bool Mesh::isLine(Vertex & V0, Vertex & V1, int * p){
+  int cnt = 0;
+
+  for (unsigned int i = 0; i < V0.proxies.size() ; i++){
+    for (unsigned int j = 0; j < V1.proxies.size() ; j++){
+      if(V0.proxies[i] ==  V1.proxies[j]){
+	p[cnt] = V0.proxies[i];
+	cnt++;
+      }
+    }
+  }
+  
+  if(cnt == 2) return true;
+  else return false;
+}
+
+bool Mesh::isinLine(Vertex & V, anchorPair & P){
+  
+  if((V.proxies[0] == P.proxy[0] && V.proxies[1] == P.proxy[1]) 
+     || (V.proxies[1] == P.proxy[0] && V.proxies[0] == P.proxy[1]))
+      return true;
+    else return false;
+}
+
+void Mesh::edgeExtraction(){
+
+  //  std::vector<Vertex> anchorV;
+  //  std::vector<Vertex> edgeV;
+  //  std::vector<anchorPair> anchorP;
+  anchorPair temp;
+  
+  for (unsigned int i = 0; i < V.size() ; i++){
+    if(V[i].proxies.size() >= 3)   anchorV.push_back(V[i]);
+    else if(V[i].proxies.size() == 2)   edgeV.push_back(V[i]);
+  }
+  
+  for (unsigned int i = 0; i < anchorV.size() ; i++){
+    for(unsigned int j = i + 1; j < anchorV.size() ; j++){
+      if(isLine(anchorV[i], anchorV[j], temp.proxy)){
+	temp.anchorVertex[0] = anchorV[i];
+	temp.anchorVertex[1] = anchorV[j];
+	anchorP.push_back(temp);
+      }
+    }
+  }
+
+  
+#if debug == 1
+  for (unsigned int i = 0; i < anchorV.size() ; i++){
+    for(unsigned int j = 0; j < anchorV[i].proxies.size() ; j++){
+      cout << anchorV[i].proxies[j] << ' ';
+    }
+    cout << endl;
+  }
+  
+  for (unsigned int i = 0; i < edgeV.size() ; i++){
+    for(unsigned int j = 0; j < edgeV[i].proxies.size() ; j++){
+      cout << edgeV[i].proxies[j] << ' ';
+    }
+    cout << endl;
+  }
+
+  for (unsigned int i = 0; i < anchorP.size() ; i++){
+    
+    for(unsigned int j = 0; j < anchorP[i].anchorVertex[0].proxies.size() ; j++){
+      cout << anchorP[i].anchorVertex[0].proxies[j] << ' ';
+    }
+    cout << endl;
+
+    for(unsigned int j = 0; j < anchorP[i].anchorVertex[0].proxies.size() ; j++){
+      cout << anchorP[i].anchorVertex[1].proxies[j] << ' ';
+    }
+    
+    cout << anchorP[i].proxy[0] << " + " << anchorP[i].proxy[1] << endl;
+  }
+  
+  cout << endl;
+#endif
+  
+  // find the edge vertex to pair line 
+  for (unsigned int i = 0; i < anchorP.size() ; i++){
+    for (unsigned int j = 0; j < edgeV.size() ; j++){
+      if(isinLine(edgeV[j], anchorP[i])){
+	anchorP[i].edges.push_back(edgeV[j]);
+      }
+    }
+  }
+
+  
+#if debug == 1
+  for (unsigned int i = 0; i < anchorP.size() ; i++){
+    cout << anchorP[i].edges.size() <<endl;  
+    for(unsigned int j = 0; j < anchorP[i].edges.size() ; j++){
+
+      for (std::vector<int>::iterator it = anchorP[i].edges[j].proxies.begin() ; it != anchorP[i].edges[j].proxies.end(); ++it)
+	cout << *it << ' ';
+    }
+      cout << endl;  
+  }
+#endif
+
+  //save edges
+  anchorPCopy = anchorP;
+
+  if(edgeExtra)
+    findMoreAnchor();  
+  
+
+  //  find the anchor vertex for each proxy
+  for (unsigned int i = 0; i < anchorV.size() ; i++){
+    //    anchorV[i].lable = i;//!!!
+    for(std::vector<int>::iterator it = anchorV[i].proxies.begin(); it != anchorV[i].proxies.end(); ++it){
+      p[*it].anchorV.push_back(anchorV[i]);
+    }
+  }
+  
+
+  //  find the inner vertex for each proxy
+  for (unsigned int i = 0; i < V.size() ; i++){
+    for(std::vector<int>::iterator it = V[i].proxies.begin(); it != V[i].proxies.end(); ++it){
+      p[*it].V.push_back(V[i]);
+    }
+  }
+
+  //  find the  vertex pair for each proxy
+  if(edgeExtra){
+    for (unsigned int i = 0; i < anchorPCopy.size() ; i++){
+      if(anchorPCopy[i].proxy[0] > 0 ){
+	p[anchorPCopy[i].proxy[0]].anchorP.push_back(anchorPCopy[i]);
+	p[anchorPCopy[i].proxy[1]].anchorP.push_back(anchorPCopy[i]);
+      }
+    }
+  }
+  else{
+    for (unsigned int i = 0; i < anchorP.size() ; i++){
+      p[anchorP[i].proxy[0]].anchorP.push_back(anchorP[i]);
+      p[anchorP[i].proxy[1]].anchorP.push_back(anchorP[i]);
+    }
+  }
+
+#if debug == 1
+  for (unsigned int i = 0; i < num ; i++){
+    cout << p[i].anchorV.size() << " : ";
+    cout << p[i].V.size() << " : ";
+    cout << p[i].anchorP.size() << endl;
+  }
+#endif  
+  
+}
+
+/// find triangle whose vertex have three different colors
+void Mesh::insertTriangle(){
+  
+  int color[3] = {-1, -1, -1};
+  Triangle temp;
+    
+
+  for (unsigned int i = 0; i < num ; i++){
+    for(std::vector<Vertex>::iterator it = p[i].V.begin(); it != p[i].V.end(); ++it){
+      V[(*it).index].lable = (*it).lable;
+      //      cout << (*it).lable << ' ';
+    }
+    
+  cout << endl;
+	
+    for(std::vector<Triangle>::iterator it = p[i].T.begin(); it != p[i].T.end(); ++it){
+      for (unsigned int k = 0; k < 3; k++) 
+	color[k] = V[(*it).v[k]].lable;
+      
+      //cout << color[0] <<" *" << color[1] <<"*" << color[2] <<endl;
+      
+      if(color[0] != color[1] && color[0] != color[2] && color[1] != color[2]){
+	cout << "Proxy " << i << " add a triangle! : ";
+	cout << color[0] <<' ';
+	cout << color[1] <<' ';
+	cout << color[2] <<' '<<endl;
+	
+	temp = *(it);
+	for (unsigned int j = 0; j < 3; j++) 
+	  temp.v[j] = p[i].anchorV[color[j]].index;
+
+	for (unsigned int j = 0; j < p[i].anchorP.size(); j++) {
+	  if((temp.v[0] == p[i].anchorP[j].anchorVertex[0].index || temp.v[1] == p[i].anchorP[j].anchorVertex[0].index || temp.v[2] == p[i].anchorP[j].anchorVertex[0].index) && (temp.v[0] == p[i].anchorP[j].anchorVertex[1].index || temp.v[1] == p[i].anchorP[j].anchorVertex[1].index || temp.v[2] == p[i].anchorP[j].anchorVertex[1].index))
+	    p[i].anchorP[j].used = 1;
+	}
+	
+	TR.push_back(temp);  
+      }
+    }
+
+    // test
+    cout << "Proxy " << i << " has anchor vertex: ";
+    for (unsigned int j = 0; j < p[i].anchorV.size(); j++) {
+      cout << p[i].anchorV[j].lable << ' ';
+    }
+    cout << endl;
+    
+    for (unsigned int j = 0; j < p[i].anchorP.size(); j++) {
+      if(p[i].anchorP[j].used < 0){
+	cout <<"Proxy " << i <<" miss edge :";
+	
+	cout << V[p[i].anchorP[j].anchorVertex[0].index].lable << ' ';
+	cout << V[p[i].anchorP[j].anchorVertex[1].index].lable << endl;
+      }
+    }
+    
+
+  }  
+
+
+}
+
+
+
+void Mesh::triangulation(){
+  //initialization for anchor vertex each proxy
+  for (unsigned int i = 0; i < num ; i++){
+    for (unsigned int j = 0; j < p[i].anchorV.size() ; j++)
+      p[i].anchorV[j].lable = j;
+  }
+  
+  for (unsigned int i = 0; i < num ; i++){
+    for(std::vector<Vertex>::iterator it = p[i].V.begin(); it != p[i].V.end(); ++it){
+      Vec3f p0 = (*it).p;
+      float minDis = 1000.0;
+      int lable = -1;
+
+      for (unsigned int j = 0; j < p[i].anchorV.size() ; j++){
+      	Vec3f p1 = p[i].anchorV[j].p;
+
+      	float distance = dist(p0, p1);
+	// same num with anchor vertex
+	// if(distance == 0)
+	//   cout << "O" << ' ';
+      	if( distance < minDis ){
+      	  minDis = distance;
+      	  lable = p[i].anchorV[j].lable;
+      	}
+	
+      }
+      
+      (*it).lable = lable;
+      
+    }
+    //    cout << endl;
+  }
+
+#if debug == 1
+    for (unsigned int i = 0; i < num ; i++){
+      for(std::vector<Vertex>::iterator it = p[i].V.begin(); it != p[i].V.end(); ++it){
+	cout << (*it).lable << ' ';
+      }
+      cout << endl;
+    }
+#endif
+
+
+}
+
+
+
+
+
+void Mesh::vertexClass(){
+  
+  std::vector<vector<int> > classVectex(V.size());
+  int flag = 1;
+  
+  for (unsigned int i = 0; i < T.size (); i++)
+    {
+      for(unsigned int j = 0; j < 3; j++){
+
+	int index = T[i].v[j];
+	// cout << i << " "<< j << "*";
+	// cout << index << ": "<< classVectex[index].size() << ' ';
+	
+	if(classVectex[index].size()){
+	  
+	  for(unsigned int k = 0; k < classVectex[index].size(); k++){
+	    if(classVectex[index][k] == T[i].lable)
+	      flag = 0;
+	  }
+	  
+	  if(flag == 1)
+	    classVectex[index].push_back(T[i].lable) ;
+	  
+	  flag = 1;
+	  
+	}
+	else
+	  classVectex[index].push_back(T[i].lable) ;
+      }
+    }
+  
+  
+  for (unsigned int i = 0; i < V.size() ; i++){
+    V[i].proxies = classVectex[i] ;
+  }
+  
+  
+}
+

@@ -1,5 +1,5 @@
 #! /bin/bash
 make -f Makefile.linux clean
 make -f Makefile.linux
-./main models/sphere.off &&\
+./main models/tweety.off &&\
 make -f Makefile.linux clean
